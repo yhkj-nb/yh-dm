@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>选择入口 · 开源版</title>
+    <style>
+        /* ====================================================
+                   全局样式重置 & 基础
+                   ==================================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            /* 随机壁纸背景（可替换为你自己的壁纸 API） */
+            background-image: url('https://api.yppp.net/api.php');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 背景半透明遮罩，提升卡片可读性 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.2);
+            z-index: 0;
+        }
+
+        /* ====================================================
+                   主容器 - 毛玻璃卡片
+                   ==================================================== */
+        .container {
+            width: 100%;
+            max-width: 420px;
+            max-height: 98vh;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border-radius: 28px;
+            padding: 20px 18px 24px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ====================================================
+                   头部标题
+                   ==================================================== */
+        .header {
+            text-align: center;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ====================================================
+                   分类筛选标签（横向滚动）
+                   ==================================================== */
+        .filter-tabs-wrapper {
+            flex-shrink: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            margin-bottom: 14px;
+            padding: 2px 0 6px 0;
+            position: relative;
+        }
+
+        .filter-tabs-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 2px;
+            white-space: nowrap;
+            min-width: max-content;
+        }
+
+        .filter-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(2px);
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .filter-tab svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        .filter-tab:active {
+            transform: scale(0.94);
+        }
+
+        .filter-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+        }
+
+        .filter-tab .count {
+            font-size: 10px;
+            background: rgba(0, 0, 0, 0.08);
+            padding: 0 6px;
+            border-radius: 10px;
+            font-weight: 400;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .filter-tab.active .count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ====================================================
+                   卡片滑动区域
+                   ==================================================== */
+        .card-wrapper {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            border-radius: 18px;
+            margin-bottom: 14px;
+        }
+
+        .card-slider {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            height: 100%;
+            will-change: transform;
+        }
+
+        .card-item {
+            min-width: 100%;
+            padding: 0 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            border-radius: 18px;
+            padding: 22px 16px 20px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        /* ====================================================
+                   类型标签
+                   ==================================================== */
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 14px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .type-badge svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        /* ====================================================
+                   头像
+                   ==================================================== */
+        .avatar-wrapper {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            padding: 3px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+        }
+
+        .avatar-wrapper img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: block;
+            background: #edf2f7;
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            object-fit: cover;
+        }
+
+        .avatar-wrapper img.hidden {
+            display: none;
+        }
+
+        /* SVG 占位头像 */
+        .avatar-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .avatar-placeholder svg {
+            width: 40px;
+            height: 40px;
+            fill: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 右下角类型角标 */
+        .type-icon-badge {
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            background: #2d3748;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .type-icon-badge svg {
+            width: 15px;
+            height: 15px;
+            fill: white;
+        }
+
+        /* ====================================================
+                   卡片文字信息
+                   ==================================================== */
+        .item-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 2px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+
+        .item-qq {
+            font-size: 13px;
+            color: #4a5568;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+
+        .item-desc {
+            font-size: 13px;
+            color: #2d3748;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 4px 14px;
+            border-radius: 16px;
+            display: inline-block;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+
+        /* ====================================================
+                   底部指示器（圆点）
+                   ==================================================== */
+        .indicators {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+            min-height: 12px;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+        }
+
+        .dot.active {
+            background: #667eea;
+            width: 22px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        /* ====================================================
+                   导航按钮
+                   ==================================================== */
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .nav-btn.prev {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            color: #2d3748;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn.prev:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .nav-btn.next {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn.next:hover {
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        /* ====================================================
+                   加入按钮
+                   ==================================================== */
+        .join-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 20px rgba(0, 206, 201, 0.25);
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .join-btn:active {
+            transform: scale(0.97);
+        }
+
+        .join-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 30px rgba(0, 206, 201, 0.35);
+        }
+
+        /* ====================================================
+                   底部页脚
+                   ==================================================== */
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .footer a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 2px 10px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+
+        .footer a:active {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* ====================================================
+                   空状态
+                   ==================================================== */
+        .empty-state {
+            text-align: center;
+            padding: 30px 16px;
+            color: #4a5568;
+        }
+
+        .empty-state svg {
+            width: 60px;
+            height: 60px;
+            fill: #a0aec0;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+        }
+
+        /* ====================================================
+                   背景切换动画
+                   ==================================================== */
+        .bg-fade-in {
+            animation: bgFadeIn 0.6s ease-out;
+        }
+
+        @keyframes bgFadeIn {
+            from {
+                opacity: 0.6;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* ====================================================
+                   移动端响应式适配
+                   ==================================================== */
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 16px 14px 18px;
+                border-radius: 24px;
+                max-height: 100vh;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .filter-tab {
+                font-size: 12px;
+                padding: 5px 12px;
+            }
+
+            .filter-tab svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .card-wrapper {
+                min-height: 320px;
+                max-height: 380px;
+            }
+
+            .card {
+                padding: 18px 14px 16px;
+            }
+
+            .avatar-wrapper {
+                width: 72px;
+                height: 72px;
+            }
+
+            .avatar-placeholder svg {
+                width: 34px;
+                height: 34px;
+            }
+
+            .type-icon-badge {
+                width: 24px;
+                height: 24px;
+            }
+
+            .type-icon-badge svg {
+                width: 13px;
+                height: 13px;
+            }
+
+            .item-name {
+                font-size: 16px;
+            }
+
+            .item-qq {
+                font-size: 12px;
+            }
+
+            .item-desc {
+                font-size: 12px;
+                padding: 3px 12px;
+            }
+
+            .nav-btn {
+                font-size: 13px;
+                padding: 9px 0;
+            }
+
+            .join-btn {
+                font-size: 14px;
+                padding: 11px;
+            }
+
+            .footer {
+                font-size: 10px;
+                margin-top: 8px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            .card-wrapper {
+                min-height: 240px;
+                max-height: 300px;
+            }
+
+            .card {
+                padding: 14px 12px 14px;
+            }
+
+            .avatar-wrapper {
+                width: 60px;
+                height: 60px;
+                margin-bottom: 8px;
+            }
+
+            .avatar-placeholder svg {
+                width: 30px;
+                height: 30px;
+            }
+
+            .type-badge {
+                font-size: 10px;
+                padding: 2px 12px;
+                margin-bottom: 6px;
+            }
+
+            .item-name {
+                font-size: 15px;
+            }
+
+            .header h1 {
+                font-size: 17px;
+            }
+
+            .header {
+                margin-bottom: 10px;
+            }
+
+            .filter-tabs-wrapper {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="app">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>✨ <span>选择入口 · 开源版</span></h1>
+        </div>
+
+        <!-- 分类筛选标签 -->
+        <div class="filter-tabs-wrapper" id="filterTabsWrapper">
+            <div class="filter-tabs" id="filterTabs"></div>
+        </div>
+
+        <!-- 卡片滑动区域 -->
+        <div class="card-wrapper" id="cardWrapper">
+            <div class="card-slider" id="cardSlider"></div>
+        </div>
+
+        <!-- 指示器 -->
+        <div class="indicators" id="indicators"></div>
+
+        <!-- 导航按钮 -->
+        <div class="nav-buttons">
+            <button class="nav-btn prev" id="prevBtn">‹ 上一项</button>
+            <button class="nav-btn next" id="nextBtn">下一项 ›</button>
+        </div>
+
+        <!-- 加入按钮 -->
+        <a href="#" class="join-btn" id="joinBtn" target="_blank" rel="noopener noreferrer">
+            🚀 立即加入
+        </a>
+
+        <!-- 底部 -->
+        <div class="footer">
+            <span id="footerInfo">当前 1 / 1</span>
+            · <a href="javascript:void(0)" onclick="refreshBackground(); return false;">换张壁纸</a>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================
+         *  选择入口 · 开源版
+         *  开源协议：MIT License
+         *  说明：纯前端静态页面，数据在下方 itemsData 中配置
+         *  支持类型：QQ群(group) / 机器人(robot) / 频道(channel) / 好友(friend)
+         *  使用前请将 xxxxxxxxxx 替换为你的实际链接
+         * ============================================================
+         */
+
+        // ============================================================
+        //  1. 数据配置（在这里添加/修改你的条目）
+        //     ⚠️ 请将 xxxxxxxxxx 替换为你的实际链接
+        // ============================================================
+        const itemsData = [
+            // ---------- QQ群 ----------
+            {
+                type: 'group',
+                type_name: 'QQ群',
+                qq: 'xxxxxxxxxx',
+                name: '示例QQ群1',
+                desc: '请修改为你的群简介',
+                join_link: 'https://qm.qq.com/q/xxxxxxxxxx'
+            }, {
+                type: 'group',
+                type_name: 'QQ群',
+                qq: 'xxxxxxxxxx',
+                name: '示例QQ群2',
+                desc: '请修改为你的群简介',
+                join_link: 'https://qm.qq.com/q/xxxxxxxxxx'
+            }, {
+                type: 'group',
+                type_name: 'QQ群',
+                qq: 'xxxxxxxxxx',
+                name: '示例QQ群3',
+                desc: '请修改为你的群简介',
+                join_link: 'https://qm.qq.com/q/xxxxxxxxxx'
+            },
+
+            // ---------- 机器人 ----------
+            {
+                type: 'robot',
+                type_name: '机器人',
+                qq: 'xxxxxxxxxx',
+                name: '示例机器人',
+                desc: '请修改为你的机器人简介',
+                join_link: 'https://q.qq.com/qqbot/profile/?robot_uin=xxxxxxxxxx'
+            },
+
+            // ---------- 频道（使用默认SVG头像，无需QQ号） ----------
+            {
+                type: 'channel',
+                type_name: '频道',
+                qq: '', // 留空则不请求头像
+                name: '示例频道',
+                desc: '请修改为你的频道简介',
+                join_link: 'https://pd.qq.com/s/xxxxxxxxxx',
+                use_default_avatar: true // 标记使用默认SVG头像
+            },
+
+            // ---------- 个人好友 ----------
+            {
+                type: 'friend',
+                type_name: '好友',
+                qq: 'xxxxxxxxxx',
+                name: '示例好友',
+                desc: '请修改为你的好友简介',
+                join_link: 'https://qm.qq.com/q/xxxxxxxxxx'
+            }
+        ];
+
+
+        // ============================================================
+        //  2. 类型配置（颜色、显示名称）
+        // ============================================================
+        const TYPE_CONFIG = {
+            group: { label: 'QQ群', color: '#667eea' },
+            robot: { label: '机器人', color: '#00b894' },
+            channel: { label: '频道', color: '#fdcb6e' },
+            friend: { label: '好友', color: '#e17055' }
+        };
+
+        // ============================================================
+        //  3. SVG 图标库
+        // ============================================================
+        const SVG_ICONS = {
+            group: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+            robot: '<path d="M20 9V7c0-1.1-.9-2-2-2h-4c0-1.38-1.12-2.5-2.5-2.5S9 3.62 9 5H5c-1.1 0-2 .9-2 2v2c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2v2c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zM7.5 8c.83 0 1.5.67 1.5 1.5S8.33 11 7.5 11 6 10.33 6 9.5 6.67 8 7.5 8zm9 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zM7.5 14h9c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5z"/>',
+            channel: '<path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm0 14H4V4h16v12zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h8v2H6v-2z"/>',
+            friend: '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',
+            all: '<path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/>'
+        };
+
+        /**
+         * 生成 SVG 图标 HTML
+         * @param {string} type 图标类型
+         * @param {string} fill 填充颜色
+         * @returns {string} SVG HTML
+         */
+        function getSvg(type, fill) {
+            var color = fill || 'currentColor';
+            var path = SVG_ICONS[type] || SVG_ICONS.friend;
+            return '<svg viewBox="0 0 24 24" style="fill:' + color + ';">' + path + '</svg>';
+        }
+
+
+        // ============================================================
+        //  4. 头像工具函数
+        // ============================================================
+
+        /**
+         * 获取头像 URL
+         * @param {string} type 类型
+         * @param {string} qq QQ号
+         * @param {boolean} useDefault 是否强制使用默认头像
+         * @returns {string} 头像URL，为空则表示使用默认SVG
+         */
+        function getAvatarUrl(type, qq, useDefault) {
+            if (useDefault || !qq) return '';
+            switch (type) {
+                case 'group':
+                    return 'https://p.qlogo.cn/gh/' + qq + '/' + qq + '/640/';
+                case 'robot':
+                case 'friend':
+                    return 'https://q1.qlogo.cn/g?b=qq&nk=' + qq + '&s=640';
+                default:
+                    return 'https://q1.qlogo.cn/g?b=qq&nk=' + qq + '&s=640';
+            }
+        }
+
+        /**
+         * 获取备用头像 URL（当主接口失败时使用）
+         */
+        function getFallbackUrl(type, qq) {
+            if (!qq) return '';
+            if (type === 'group') {
+                return 'https://p.qlogo.cn/gh/' + qq + '/' + qq + '/0/';
+            }
+            return 'https://q2.qlogo.cn/headimg_dl?dst_uin=' + qq + '&spec=640';
+        }
+
+
+        // ============================================================
+        //  5. 应用状态
+        // ============================================================
+        let currentFilter = 'all'; // 当前筛选类型
+        let filteredItems = []; // 筛选后的数据
+        let currentIndex = 0; // 当前卡片索引
+        let isAnimating = false; // 是否正在动画
+
+        // ============================================================
+        //  6. DOM 引用
+        // ============================================================
+        var $ = function(id) { return document.getElementById(id); };
+        var filterTabsEl = $('filterTabs');
+        var cardSlider = $('cardSlider');
+        var indicatorsEl = $('indicators');
+        var prevBtn = $('prevBtn');
+        var nextBtn = $('nextBtn');
+        var joinBtn = $('joinBtn');
+        var footerInfo = $('footerInfo');
+        var filterWrapper = $('filterTabsWrapper');
+        var cardWrapper = $('cardWrapper');
+
+
+        // ============================================================
+        //  7. 核心渲染函数
+        // ============================================================
+
+        /**
+         * 根据类型筛选数据
+         */
+        function filterItems(type) {
+            if (type === 'all') {
+                filteredItems = itemsData.slice();
+            } else {
+                filteredItems = itemsData.filter(function(item) { return item.type === type; });
+            }
+            // 如果筛选结果为空，回退到全部
+            if (filteredItems.length === 0) {
+                filteredItems = itemsData.slice();
+                currentFilter = 'all';
+            } else {
+                currentFilter = type;
+            }
+            // 重置索引
+            currentIndex = 0;
+            renderAll();
+        }
+
+        /**
+         * 全量渲染
+         */
+        function renderAll() {
+            renderTabs();
+            renderCards();
+            renderIndicators();
+            updateSlide(currentIndex, false);
+            updateJoinBtn();
+            updateFooter();
+            updateURL();
+        }
+
+        /**
+         * 渲染分类标签
+         */
+        function renderTabs() {
+            // 统计各类型数量
+            var counts = {};
+            itemsData.forEach(function(item) {
+                counts[item.type] = (counts[item.type] || 0) + 1;
+            });
+
+            var html = '';
+            var totalAll = itemsData.length;
+
+            // "全部" 标签
+            html += '<a href="javascript:void(0)" class="filter-tab' +
+                (currentFilter === 'all' ? ' active' : '') +
+                '" data-type="all">' +
+                getSvg('all', currentFilter === 'all' ? 'white' : 'currentColor') +
+                '全部 <span class="count">' + totalAll + '</span></a>';
+
+            // 各类型标签
+            for (var key in TYPE_CONFIG) {
+                var count = counts[key] || 0;
+                if (count === 0) continue;
+                var isActive = currentFilter === key;
+                html += '<a href="javascript:void(0)" class="filter-tab' +
+                    (isActive ? ' active' : '') +
+                    '" data-type="' + key + '">' +
+                    getSvg(key, isActive ? 'white' : 'currentColor') +
+                    TYPE_CONFIG[key].label +
+                    ' <span class="count">' + count + '</span></a>';
+            }
+
+            filterTabsEl.innerHTML = html;
+
+            // 绑定点击事件
+            filterTabsEl.querySelectorAll('.filter-tab').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    var type = this.getAttribute('data-type');
+                    if (type !== currentFilter) {
+                        filterItems(type);
+                        // 滚动标签到可见区域（移动端体验优化）
+                        setTimeout(function() {
+                            var rect = tab.getBoundingClientRect();
+                            var wrapRect = filterWrapper.getBoundingClientRect();
+                            filterWrapper.scrollTo({
+                                left: filterWrapper.scrollLeft + rect.left - wrapRect.left - 20,
+                                behavior: 'smooth'
+                            });
+                        }, 100);
+                    }
+                });
+            });
+        }
+
+        /**
+         * 渲染卡片列表
+         */
+        function renderCards() {
+            if (filteredItems.length === 0) {
+                cardSlider.innerHTML =
+                    '<div class="card-item"><div class="card"><div class="empty-state">' +
+                    getSvg('all', '#a0aec0') +
+                    '<p>暂无此类型内容</p></div></div></div>';
+                return;
+            }
+
+            var html = '';
+            filteredItems.forEach(function(item, index) {
+                var type = item.type;
+                var qq = item.qq || '';
+                var useDefault = item.use_default_avatar || false;
+                var avatar = getAvatarUrl(type, qq, useDefault);
+                var fallback = getFallbackUrl(type, qq);
+                var color = TYPE_CONFIG[type] ? TYPE_CONFIG[type].color : '#6c5ce7';
+                var label = item.type_name || (TYPE_CONFIG[type] ? TYPE_CONFIG[type].label : type);
+
+                html += '<div class="card-item" data-index="' + index + '">';
+                html += '<div class="card">';
+
+                // 类型标签
+                html += '<div class="type-badge" style="background:' + color + ';">';
+                html += getSvg(type, 'white');
+                html += label + '</div>';
+
+                // 头像
+                html += '<div class="avatar-wrapper">';
+                if (avatar && !useDefault) {
+                    html += '<img src="' + avatar + '" alt="' + label +
+                        '" loading="lazy" data-fallback="' + fallback +
+                        '" onerror="handleAvatarError(this)">';
+                    html += '<div class="avatar-placeholder" style="display:none;">' +
+                        getSvg(type, 'rgba(255,255,255,0.9)') + '</div>';
+                } else {
+                    // 默认显示 SVG 占位
+                    html += '<div class="avatar-placeholder" style="display:flex;">' +
+                        getSvg(type, 'rgba(255,255,255,0.9)') + '</div>';
+                }
+                html += '<span class="type-icon-badge">' + getSvg(type, 'white') + '</span>';
+                html += '</div>';
+
+                // 名称 & 信息
+                html += '<div class="item-name">' + escapeHtml(item.name) + '</div>';
+                if (qq && !useDefault) {
+                    html += '<div class="item-qq">' + escapeHtml(qq) + '</div>';
+                }
+                html += '<div class="item-desc">' + escapeHtml(item.desc) + '</div>';
+
+                html += '</div></div>';
+            });
+
+            cardSlider.innerHTML = html;
+
+            // 重新绑定图片错误事件
+            cardSlider.querySelectorAll('img[data-fallback]').forEach(function(img) {
+                img.addEventListener('error', function() { handleAvatarError(this); });
+            });
+        }
+
+        /**
+         * 渲染指示器圆点
+         */
+        function renderIndicators() {
+            if (filteredItems.length <= 1) {
+                indicatorsEl.innerHTML = '';
+                return;
+            }
+            var html = '';
+            for (var i = 0; i < filteredItems.length; i++) {
+                html += '<span class="dot' + (i === currentIndex ? ' active' : '') +
+                    '" data-index="' + i + '"></span>';
+            }
+            indicatorsEl.innerHTML = html;
+
+            indicatorsEl.querySelectorAll('.dot').forEach(function(dot) {
+                dot.addEventListener('click', function() {
+                    var idx = parseInt(this.getAttribute('data-index'));
+                    if (idx !== currentIndex && !isAnimating) {
+                        updateSlide(idx, true);
+                    }
+                });
+            });
+        }
+
+
+        // ============================================================
+        //  8. 滑动控制函数
+        // ============================================================
+
+        /**
+         * 切换到指定索引的卡片
+         */
+        function updateSlide(index, animate) {
+            if (isAnimating) return;
+            if (filteredItems.length === 0) return;
+            if (index < 0) index = filteredItems.length - 1;
+            if (index >= filteredItems.length) index = 0;
+
+            isAnimating = true;
+            currentIndex = index;
+
+            var offset = -index * 100;
+            cardSlider.style.transition = animate ?
+                'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)' :
+                'none';
+            cardSlider.style.transform = 'translateX(' + offset + '%)';
+
+            // 更新指示器
+            indicatorsEl.querySelectorAll('.dot').forEach(function(dot, i) {
+                dot.classList.toggle('active', i === index);
+            });
+
+            updateJoinBtn();
+            updateFooter();
+            updateURL();
+
+            setTimeout(function() { isAnimating = false; }, 500);
+        }
+
+        /**
+         * 更新加入按钮链接
+         */
+        function updateJoinBtn() {
+            if (filteredItems.length > 0 && currentIndex < filteredItems.length) {
+                joinBtn.href = filteredItems[currentIndex].join_link || '#';
+            }
+        }
+
+        /**
+         * 更新底部信息
+         */
+        function updateFooter() {
+            if (filteredItems.length > 0) {
+                footerInfo.textContent = '当前 ' + (currentIndex + 1) + ' / ' + filteredItems.length;
+            } else {
+                footerInfo.textContent = '当前 0 / 0';
+            }
+        }
+
+        /**
+         * 更新 URL 参数（支持分享和刷新保留状态）
+         */
+        function updateURL() {
+            try {
+                var url = new URL(window.location);
+                url.searchParams.set('type', currentFilter);
+                url.searchParams.set('index', currentIndex);
+                window.history.replaceState({}, '', url);
+            } catch (e) { /* 静默失败 */ }
+        }
+
+
+        // ============================================================
+        //  9. 工具函数
+        // ============================================================
+
+        /** HTML 转义，防止 XSS */
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * 头像加载失败时的处理：尝试备用接口，最终显示 SVG 占位
+         */
+        window.handleAvatarError = function(img) {
+            if (img.dataset.retried) return;
+            img.dataset.retried = 'true';
+
+            if (img.dataset.fallback) {
+                img.src = img.dataset.fallback;
+            } else {
+                img.style.display = 'none';
+                var wrapper = img.parentElement;
+                var placeholder = wrapper.querySelector('.avatar-placeholder');
+                if (placeholder) {
+                    placeholder.style.display = 'flex';
+                }
+            }
+        };
+
+        /**
+         * 刷新壁纸（不刷新页面）
+         */
+        window.refreshBackground = function() {
+            var body = document.body;
+            body.classList.remove('bg-fade-in');
+            void body.offsetWidth; // 强制回流触发动画
+            body.style.backgroundImage = 'url(https://api.yppp.net/api.php?_=' + Date.now() + ')';
+            body.classList.add('bg-fade-in');
+        };
+
+
+        // ============================================================
+        //  10. 事件绑定
+        // ============================================================
+
+        // 导航按钮
+        prevBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!isAnimating && filteredItems.length > 0) {
+                updateSlide(currentIndex - 1, true);
+            }
+        });
+
+        nextBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!isAnimating && filteredItems.length > 0) {
+                updateSlide(currentIndex + 1, true);
+            }
+        });
+
+        // 触摸滑动（移动端）
+        var touchStartX = 0;
+        var isDragging = false;
+
+        cardWrapper.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            isDragging = true;
+        }, { passive: true });
+
+        cardWrapper.addEventListener('touchend', function(e) {
+            if (!isDragging || filteredItems.length <= 1) return;
+            var touchEndX = e.changedTouches[0].screenX;
+            var diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > 50) {
+                if (diff > 0 && currentIndex < filteredItems.length - 1) {
+                    updateSlide(currentIndex + 1, true);
+                } else if (diff < 0 && currentIndex > 0) {
+                    updateSlide(currentIndex - 1, true);
+                } else if (diff > 0 && currentIndex === filteredItems.length - 1) {
+                    updateSlide(0, true);
+                } else if (diff < 0 && currentIndex === 0) {
+                    updateSlide(filteredItems.length - 1, true);
+                }
+            }
+            isDragging = false;
+        }, { passive: true });
+
+        // 键盘支持（桌面端）
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft' && !isAnimating) {
+                e.preventDefault();
+                if (filteredItems.length > 0) updateSlide(currentIndex - 1, true);
+            } else if (e.key === 'ArrowRight' && !isAnimating) {
+                e.preventDefault();
+                if (filteredItems.length > 0) updateSlide(currentIndex + 1, true);
+            }
+        });
+
+
+        // ============================================================
+        //  11. 启动应用（从 URL 恢复状态）
+        // ============================================================
+
+        function initFromURL() {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var type = params.get('type') || 'all';
+                var idx = parseInt(params.get('index')) || 0;
+
+                // 验证类型是否有效
+                if (type !== 'all' && !TYPE_CONFIG[type]) type = 'all';
+
+                // 先筛选数据
+                if (type === 'all') {
+                    filteredItems = itemsData.slice();
+                } else {
+                    filteredItems = itemsData.filter(function(item) { return item.type === type; });
+                }
+                if (filteredItems.length === 0) {
+                    filteredItems = itemsData.slice();
+                    type = 'all';
+                }
+                currentFilter = type;
+
+                // 再设置索引
+                if (idx >= 0 && idx < filteredItems.length) {
+                    currentIndex = idx;
+                } else {
+                    currentIndex = 0;
+                }
+
+                renderAll();
+            } catch (e) {
+                // 降级方案：显示全部
+                filterItems('all');
+            }
+        }
+
+        // 启动！
+        initFromURL();
+    </script>
+
+</body>
+</html>
